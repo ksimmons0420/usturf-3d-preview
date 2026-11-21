@@ -1,0 +1,516 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-family:system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Turf Cross-Section</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one fixed WebGL canvas behind the page; six story beats scroll over it.
+   Desktop: copy cards alternate left/right and the camera frames the sample on the open side.
+   Phone: cards pin to the bottom half and the sample sits in the top half. Single dark look on purpose (lit 3D scene). */
+:root{
+  --night:#11150D;
+  --panel:rgba(17,21,13,.78);
+  --line:rgba(238,247,236,.14);
+  --turf:#4FAE45;
+  --turf-soft:#9BE58F;
+  --gold:#FFC431;
+  --sand:#E9DFC6;
+  --ink:#F3F6EF;
+  --muted:#A9B4A5;
+  --f-display:'Poppins',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{background:var(--night);color:var(--ink)}
+body{font-family:var(--f-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--night)}
+main{position:relative;overflow-x:clip}
+#scene{position:fixed;inset:0;width:100%;height:100%;z-index:0;display:block}
+.grain{position:fixed;inset:0;z-index:1;pointer-events:none;opacity:.07;mix-blend-mode:overlay;background-size:160px 160px}
+#labels{position:fixed;inset:0;z-index:2;pointer-events:none;opacity:0}
+#labels svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#labels line{stroke:var(--turf-soft);stroke-width:1;stroke-dasharray:3 3}
+#labels circle{fill:var(--gold)}
+.lab{position:absolute;width:13.5rem;font-size:.8rem;line-height:1.4;color:var(--muted)}
+.lab b{display:block;font-family:var(--f-mono);font-weight:500;font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--ink);margin-bottom:.15rem}
+.lab b i{font-style:normal;color:var(--gold);margin-right:.4rem}
+
+header.bar{position:fixed;top:env(safe-area-inset-top,0px);left:0;right:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;padding-block:14px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:linear-gradient(var(--night),rgba(17,21,13,0))}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand strong{font-family:var(--f-display);font-weight:800;font-size:1.05rem;letter-spacing:-.01em}
+.chip{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:3px 9px;white-space:nowrap}
+.btn-ghost{font:500 .78rem/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:rgba(17,21,13,.6);border:1px solid var(--line);border-radius:99px;padding:9px 14px;cursor:pointer}
+.btn-ghost[aria-pressed="true"]{border-color:var(--turf-soft);color:var(--turf-soft)}
+button:focus-visible,a:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+
+.story{position:relative;z-index:3}
+section.beat{min-height:72vh;display:flex;align-items:center;padding-block:6vh;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+section.beat.right{justify-content:flex-end}
+.wrap{width:100%;max-width:72rem;margin-inline:auto;display:flex}
+section.right .wrap{justify-content:flex-end}
+.card{max-width:28rem;min-width:0;background:var(--panel);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);border:1px solid var(--line);border-radius:16px;padding:1.5rem 1.5rem 1.6rem;display:flex;flex-direction:column;gap:.8rem}
+.eyebrow{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--turf-soft)}
+h1,h2{font-family:var(--f-display);font-weight:800;letter-spacing:-.025em;line-height:1.02;margin:0;text-wrap:balance}
+h1{font-size:clamp(2.6rem,6.2vw,5rem)}
+h1 em{font-style:normal;color:var(--gold)}
+h2{font-size:clamp(1.8rem,3.4vw,2.6rem)}
+p{margin:0;color:var(--muted);max-width:60ch}
+p strong{color:var(--ink);font-weight:600}
+.hero .card{background:none;border:0;-webkit-backdrop-filter:none;backdrop-filter:none;padding:0;max-width:36rem;gap:1.1rem}
+.hero p{font-size:1.08rem;color:#C9D2C5}
+.scrollcue{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:10px}
+.scrollcue::before{content:"";width:28px;height:1px;background:var(--gold)}
+
+.hold{display:flex;align-items:center;gap:14px;margin-top:.3rem;align-self:flex-start;font:600 1rem/1 var(--f-body);color:var(--night);background:var(--gold);border:0;border-radius:99px;padding:10px 22px 10px 10px;cursor:pointer;user-select:none;-webkit-user-select:none;touch-action:none}
+.hold svg{width:38px;height:38px;flex:none;transform:rotate(-90deg)}
+.hold .track{fill:none;stroke:rgba(17,21,13,.2);stroke-width:4}
+.hold .ring{fill:none;stroke:var(--night);stroke-width:4;stroke-linecap:round;stroke-dasharray:100.5;stroke-dashoffset:100.5}
+.hold-note{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.06em;color:var(--muted);min-height:1.2em}
+
+.proof{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:.2rem 0}
+.proof div{border:1px solid var(--line);border-radius:12px;padding:.75rem .8rem;display:flex;flex-direction:column;gap:.15rem;min-width:0}
+.proof b{font-family:var(--f-display);font-weight:700;font-size:1.05rem;color:var(--ink);line-height:1.2;font-variant-numeric:tabular-nums}
+.proof span{font-size:.78rem;color:var(--muted);line-height:1.35}
+.cta{display:inline-flex;align-self:flex-start;align-items:center;gap:8px;font:600 1rem/1 var(--f-body);color:var(--night);background:var(--gold);border-radius:99px;padding:15px 24px;text-decoration:none}
+.fine{font-size:.72rem;line-height:1.5;color:#7F8A7B}
+
+.concept{position:relative;z-index:3;padding-block:2.5rem 3rem;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-top:1px solid var(--line);background:var(--night)}
+.concept p{max-width:72rem;margin-inline:auto;font-size:.8rem;color:#7F8A7B}
+
+#loader{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:var(--night);font-family:var(--f-mono);font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);transition:opacity .6s}
+#loader.done{opacity:0;pointer-events:none}
+.nogl #scene,.nogl #labels{display:none}
+
+@media (max-width:760px){
+  .chip{display:none}
+  /* phone: cards ride the bottom of the screen (sticky) so one is always in view */
+  section.beat{min-height:66vh;align-items:stretch;padding-block:24vh 1vh}
+  .beat:not(.hero) .wrap{align-items:flex-end}
+  .beat:not(.hero) .card{position:sticky;bottom:calc(2vh + env(safe-area-inset-bottom,0px))}
+  section.beat.hero{padding-block:12vh 14vh;min-height:76vh}
+  .hero .wrap{align-items:flex-start}
+  .card{padding:1rem 1.05rem 1.1rem;gap:.5rem}
+  .beat:not(.hero) h2{font-size:1.55rem}
+  .beat:not(.hero) .card p{font-size:.9rem;line-height:1.45}
+  .beat:not(.hero) .card p + p{display:none}
+  .hold-note{display:none}
+  .lab{width:9.5rem;font-size:.72rem}
+  .lab span{display:none}
+}
+@media (prefers-reduced-motion:reduce){#loader{transition:none}}
+</style>
+</head>
+<body>
+
+
+<div id="loader" role="status">Building the sample…</div>
+<main>
+  <canvas id="scene" aria-label="Interactive 3D cross-section of an artificial turf install"></canvas>
+  <div class="grain" id="grain"></div>
+  <div id="labels" aria-hidden="true"><svg id="leaders"></svg></div>
+
+  <header class="bar">
+    <div class="brand"><strong>US Turf</strong><span class="chip">Concept demo</span></div>
+    <button class="btn-ghost" id="blueprint" type="button" aria-pressed="false">Blueprint</button>
+  </header>
+
+  <div class="story">
+    <section class="beat hero" data-cue="hero">
+      <div class="wrap"><div class="card">
+        <span class="eyebrow">40 × 40 cm sample · Las Vegas install</span>
+        <h1>See what's under a <em>US Turf</em> lawn.</h1>
+        <p>The green part is only the top few centimetres. Scroll and the sample comes apart layer by layer, so you can see what keeps it flat, soft and draining.</p>
+        <span class="scrollcue">Scroll to take it apart</span>
+      </div></div>
+    </section>
+
+    <section class="beat" data-cue="close">
+      <div class="wrap"><div class="card">
+        <span class="eyebrow">Close-up · the blades</span>
+        <h2>Up close, it's two kinds of fiber.</h2>
+        <p>Tall face blades in mixed greens give the colour. A shorter, curled thatch underneath fills the gaps and helps the blades stand back up after feet and paws.</p>
+      </div></div>
+    </section>
+
+    <section class="beat" data-cue="apart">
+      <div class="wrap"><div class="card">
+        <span class="eyebrow">Exploded view · 5 layers</span>
+        <h2>Five layers, pulled apart.</h2>
+        <p>Blades, infill, perforated backing, weed barrier, compacted base. <strong>Most of the work sits under the part you see.</strong></p>
+        <p>Tap <strong>Blueprint</strong> at the top to see the wire geometry. Every shape is drawn in code, with photoreal materials wrapped on top and no video.</p>
+      </div></div>
+    </section>
+
+    <section class="beat" data-cue="around">
+      <div class="wrap"><div class="card">
+        <span class="eyebrow">Drainage · from the other side</span>
+        <h2>Water goes down, not across.</h2>
+        <p>The backing is perforated, and the rock base is graded and compacted under it. Rain and rinse water move down through the layers instead of sitting on top.</p>
+      </div></div>
+    </section>
+
+    <section class="beat right" data-cue="rain">
+      <div class="wrap"><div class="card">
+        <span class="eyebrow">Try it</span>
+        <h2>Hold to make it rain.</h2>
+        <p>Press and hold. Watch the water fall through the blades and drain out the bottom of the sample. Sound plays while you hold.</p>
+        <button class="hold" id="hold" type="button" aria-describedby="holdNote">
+          <svg viewBox="0 0 38 38" aria-hidden="true"><circle class="track" cx="19" cy="19" r="16"/><circle class="ring" id="ring" cx="19" cy="19" r="16"/></svg>
+          Hold for rain
+        </button>
+        <span class="hold-note" id="holdNote" aria-live="polite">Press and hold, or hold Space while the button is focused.</span>
+      </div></div>
+    </section>
+
+    <section class="beat" data-cue="cta">
+      <div class="wrap"><div class="card">
+        <span class="eyebrow">Family-owned in Las Vegas since 2003</span>
+        <h2>Want this in your yard?</h2>
+        <div class="proof">
+          <div><b>Lifetime warranty</b><span>on materials and installation</span></div>
+          <div><b>10,000+</b><span>Projects Completed</span></div>
+          <div><b>4.7★</b><span>across 472 Google reviews</span></div>
+          <div><b>up to $7.00 / sqft</b><span>in water rebates (qualified areas)</span></div>
+        </div>
+        <a class="cta" href="https://usturf.com" target="_blank" rel="noopener">Get a free quote</a>
+        <p class="fine">Rebate: $5.00 / sqft SNWA Water Smart Landscape Rebate + LVVWD $2.00 / sqft rebate (in qualified areas), on up to 10,000 sq ft. Pricing, financing, rebate amounts, and warranty terms subject to change.</p>
+      </div></div>
+    </section>
+  </div>
+
+  <footer class="concept">
+    <p>Concept demo built by Scale House for US Turf. Not a live US Turf page. The cross-section is illustrative and not to scale; real layer makeup varies by product and install. Material textures are AI-generated. Claims are taken from US Turf's own site as of 2026-09-03.</p>
+  </footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const $=s=>document.querySelector(s);
+const clamp=(v,a,b)=>Math.min(b,Math.max(a,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const smooth=t=>t*t*(3-2*t);
+const ease=t=>{t=clamp(t,0,1);return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;};
+const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function rng(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+const R=rng(2003);
+
+/* film grain (generated, no image files) */
+try{const c=document.createElement('canvas');c.width=c.height=160;const g=c.getContext('2d');const d=g.createImageData(160,160);for(let i=0;i<d.data.length;i+=4){const v=Math.random()*255;d.data[i]=d.data[i+1]=d.data[i+2]=v;d.data[i+3]=255;}g.putImageData(d,0,0);$('#grain').style.backgroundImage='url('+c.toDataURL()+')';}catch(e){}
+
+const loader=$('#loader');
+if(!window.THREE){document.documentElement.classList.add('nogl');loader.textContent='3D needs a newer browser';setTimeout(()=>loader.classList.add('done'),1200);return;}
+
+let renderer;
+try{renderer=new THREE.WebGLRenderer({canvas:$('#scene'),antialias:true,powerPreference:'high-performance'});}
+catch(e){document.documentElement.classList.add('nogl');loader.classList.add('done');return;}
+renderer.outputEncoding=THREE.sRGBEncoding;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=.95;
+let dpr=Math.min(window.devicePixelRatio||1,1.75);
+renderer.setPixelRatio(dpr);
+
+const BG=new THREE.Color('#11150D'), BG_BP=new THREE.Color('#0A1D14');
+const scene=new THREE.Scene();
+scene.background=BG.clone();
+scene.fog=new THREE.Fog(0x11150D,170,380);
+const camera=new THREE.PerspectiveCamera(30,1,.5,1200);
+
+/* --- studio environment: a tiny lit room baked into reflections --- */
+const pmrem=new THREE.PMREMGenerator(renderer);
+const studio=new THREE.Scene();
+studio.background=new THREE.Color(0x0b0d08);
+function panel(w,h,k,pos,col){const m=new THREE.Mesh(new THREE.PlaneGeometry(w,h),new THREE.MeshBasicMaterial({color:new THREE.Color(col).multiplyScalar(k),side:THREE.DoubleSide}));m.position.set(pos[0],pos[1],pos[2]);m.lookAt(0,0,0);studio.add(m);}
+panel(22,14,3.2,[-22,20,20],'#fff1d8');   // key softbox
+panel(2.4,34,2.2,[30,4,12],'#ffffff');    // strip light
+panel(2.4,34,1.4,[-26,4,-18],'#dfe9ff');  // rim strip
+panel(70,70,.45,[0,40,0],'#bcd3ff');      // sky
+scene.environment=pmrem.fromScene(studio,.04).texture;
+
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const sun=new THREE.DirectionalLight(0xfff0d4,2.1);sun.position.set(30,55,25);sun.castShadow=true;
+sun.shadow.mapSize.set(innerWidth<760?1024:2048,innerWidth<760?1024:2048);Object.assign(sun.shadow.camera,{left:-42,right:42,top:42,bottom:-42,near:5,far:200});sun.shadow.bias=-.0006;sun.shadow.normalBias=.03;sun.shadow.radius=3;scene.add(sun);
+const fill=new THREE.HemisphereLight(0xcfe3ff,0x3a2e1c,.55);scene.add(fill);
+
+/* --- procedural textures (canvas, no image files) --- */
+const aniso=renderer.capabilities.getMaxAnisotropy();
+function tex(w,h,draw,rep,linear){const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');draw(g,w,h);const t=new THREE.CanvasTexture(c);if(!linear)t.encoding=THREE.sRGBEncoding;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=aniso;if(rep)t.repeat.set(rep[0],rep[1]);return t;}
+function stones(g,w,h,n,pal,rMin,rMax,depthBias){for(let i=0;i<n;i++){const y=R()*h,f=depthBias?(.45+.55*y/h):1,x=R()*w,r=(rMin+R()*(rMax-rMin))*f;g.fillStyle=pal[(R()*pal.length)|0];g.beginPath();g.ellipse(x,y,r,r*(.55+R()*.4),R()*3,0,7);g.fill();g.fillStyle='rgba(255,255,255,.12)';g.beginPath();g.ellipse(x-r*.25,y-r*.25,r*.45,r*.3,0,0,7);g.fill();g.strokeStyle='rgba(25,20,14,.45)';g.lineWidth=1.2;g.beginPath();g.ellipse(x,y,r,r*.7,0,0,7);g.stroke();}}
+const ROCK=['#a8977a','#6f6250','#c2b393','#5a4f40','#9b8b70','#b8a684','#7d6f5a'];
+// base top: fine decomposed granite
+const dgTex=tex(512,512,(g,w,h)=>{g.fillStyle='#9c8a6c';g.fillRect(0,0,w,h);stones(g,w,h,5200,ROCK,1,3.4);});
+// base cut face: fine on top, coarse rock lower down (v runs bottom→top)
+const strataTex=tex(512,512,(g,w,h)=>{const gr=g.createLinearGradient(0,0,0,h);gr.addColorStop(0,'#a3906f');gr.addColorStop(1,'#5f5342');g.fillStyle=gr;g.fillRect(0,0,w,h);stones(g,w,h,1700,ROCK,2,13,true);});
+// weed barrier: woven polypropylene
+const barrierTex=tex(256,256,(g,w,h)=>{g.fillStyle='#1b1b19';g.fillRect(0,0,w,h);for(let y=0;y<h;y+=4)for(let x=0;x<w;x+=4){g.fillStyle=((x+y)/4)%2?'#2a2a26':'#151513';g.fillRect(x,y,4,2);g.fillRect(x+((x+y)/4%2?2:0),y,2,4);}},null);
+// backing top: woven base, perforation holes and tuft stitch rows
+const backingTex=tex(512,512,(g,w,h)=>{g.fillStyle='#34322c';g.fillRect(0,0,w,h);g.strokeStyle='rgba(255,255,255,.05)';for(let y=0;y<h;y+=3){g.beginPath();g.moveTo(0,y);g.lineTo(w,y);g.stroke();}
+  g.fillStyle='#5b6b3a';for(let x=6;x<w;x+=16)for(let y=0;y<h;y+=7){g.fillRect(x-2,y,4,4);}
+  g.fillStyle='#070706';for(let y=12;y<h;y+=40)for(let x=14+((y/40)%2)*20;x<w;x+=40){g.beginPath();g.arc(x,y,3.6,0,7);g.fill();}});
+const backingSide=tex(64,64,(g,w,h)=>{g.fillStyle='#262420';g.fillRect(0,0,w,h);g.fillStyle='#3b3832';g.fillRect(0,h*.45,w,h*.12);});
+const sandTex=tex(512,512,(g,w,h)=>{g.fillStyle='#c4ad80';g.fillRect(0,0,w,h);const pal=['#d8c59b','#a8915f','#e6d8b4','#8d7a52','#bfa979'];for(let i=0;i<26000;i++){g.fillStyle=pal[(R()*pal.length)|0];const s=1+R()*2;g.fillRect(R()*w,R()*h,s,s);}for(let i=0;i<2200;i++){g.fillStyle='#1d1b19';const s=1.5+R()*2.5;g.fillRect(R()*w,R()*h,s,s);}});
+// contact shadow under the sample
+const blobTex=tex(256,256,(g,w,h)=>{const gr=g.createRadialGradient(w/2,h/2,10,w/2,h/2,w/2);gr.addColorStop(0,'rgba(0,0,0,.75)');gr.addColorStop(.55,'rgba(0,0,0,.35)');gr.addColorStop(1,'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(0,0,w,h);},null,true);
+
+/* --- the sample, in centimetres --- */
+const S=40;
+const mats=[];
+function M(o){const m=new THREE.MeshStandardMaterial(o);mats.push(m);return m;}
+function scaleTex(t,u,v){const c=t.clone();c.needsUpdate=true;c.repeat.set(u,v);return c;}
+// rounded, beveled slab: edges are where the light lives
+function slab(h,y0,top,side,rad,bev){
+  const s=S/2-rad-bev, sh=new THREE.Shape();
+  sh.moveTo(-s,-s-rad);sh.lineTo(s,-s-rad);sh.quadraticCurveTo(s+rad,-s-rad,s+rad,-s);sh.lineTo(s+rad,s);sh.quadraticCurveTo(s+rad,s+rad,s,s+rad);sh.lineTo(-s,s+rad);sh.quadraticCurveTo(-s-rad,s+rad,-s-rad,s);sh.lineTo(-s-rad,-s);sh.quadraticCurveTo(-s-rad,-s-rad,-s,-s-rad);
+  const g=new THREE.ExtrudeGeometry(sh,{depth:Math.max(.01,h-2*bev),bevelEnabled:bev>0,bevelThickness:bev,bevelSize:bev,bevelSegments:3,curveSegments:6});
+  g.rotateX(-Math.PI/2);g.translate(0,y0+bev,0);
+  const m=new THREE.Mesh(g,[top,side]);m.castShadow=true;m.receiveShadow=true;return m;
+}
+// photoreal material scans (generated with Higgsfield, made tileable); canvas textures show until they load, or if they fail
+const imgCache={};
+function photo(url,fb,u,v){const t=scaleTex(fb,u,v);(imgCache[url]=imgCache[url]||new Promise(res=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=()=>res(null);i.src=url;})).then(i=>{if(i){t.image=i;t.needsUpdate=true;}});return t;}
+const root=new THREE.Group();scene.add(root);
+const parts=[];
+function part(key,order,lift){const g=new THREE.Group();root.add(g);const p={key,order,lift,g};parts.push(p);return p;}
+
+// soft ground: contact blob + real sun shadow
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(400,400),new THREE.ShadowMaterial({opacity:.38}));ground.rotation.x=-Math.PI/2;ground.position.y=-.02;ground.receiveShadow=true;scene.add(ground);
+const blob=new THREE.Mesh(new THREE.PlaneGeometry(S*1.9,S*1.9),new THREE.MeshBasicMaterial({map:blobTex,transparent:true,depthWrite:false}));blob.rotation.x=-Math.PI/2;blob.position.y=.01;scene.add(blob);
+
+// 5 base: compacted rock, with real stones on every face
+const pBase=part('base',0,0);
+pBase.g.add(slab(7.5,0,M({map:photo('tex/dg.jpg',dgTex,1/24,1/24),bumpMap:photo('tex/dg.jpg',dgTex,1/24,1/24),bumpScale:.06,roughness:1}),M({map:photo('tex/strata.jpg',strataTex,1/22,1/7.6),bumpMap:photo('tex/strata.jpg',strataTex,1/22,1/7.6),bumpScale:.12,roughness:1}),.8,.25));
+{
+  const geo=new THREE.DodecahedronGeometry(1,0), mat=M({roughness:.95,metalness:0,flatShading:true});
+  const n=1500, im=new THREE.InstancedMesh(geo,mat,n), o=new THREE.Object3D(), c=new THREE.Color();
+  im.castShadow=true;im.receiveShadow=true;
+  for(let i=0;i<n;i++){
+    const face=i<300?4:(i%4);let x,y,z;const e=S/2-.05;
+    if(face===4){x=(R()-.5)*(S-2);z=(R()-.5)*(S-2);y=7.45;}
+    else{const a=(R()-.5)*(S-2.2);y=.35+R()*6.8;if(face===0){x=a;z=e;}else if(face===1){x=e;z=a;}else if(face===2){x=a;z=-e;}else{x=-e;z=a;}}
+    const big=face===4?.18+R()*.3:(.25+R()*.55)*(1.25-.55*y/7.5);
+    o.position.set(x,y,z);o.rotation.set(R()*6,R()*6,R()*6);o.scale.set(big*(.8+R()*.5),big*(.55+R()*.35),big*(.8+R()*.5));o.updateMatrix();im.setMatrixAt(i,o.matrix);
+    c.set(ROCK[(R()*ROCK.length)|0]).convertSRGBToLinear();im.setColorAt(i,c);
+  }
+  pBase.g.add(im);
+}
+// 4 weed barrier: thin fabric, a touch wider than the base so the edge reads
+const pBarrier=part('barrier',.25,6);
+pBarrier.g.add(slab(.35,7.5,M({map:photo('tex/barrier.jpg',barrierTex,1/5,1/5),bumpMap:photo('tex/barrier.jpg',barrierTex,1/5,1/5),bumpScale:.02,roughness:.9}),M({color:0x1a1a18,roughness:.9}),.5,.06));
+// 3 backing: perforated, with tuft stitch rows
+const pBacking=part('backing',.5,13);
+pBacking.g.add(slab(.6,7.9,M({map:photo('tex/backing.jpg',backingTex,1/14,1/14),bumpMap:photo('tex/backing.jpg',backingTex,1/14,1/14),bumpScale:.05,roughness:.85}),M({map:backingSide,roughness:.85}),.5,.12));
+// 2 infill: sand slab plus rounded sand + angular rubber granules
+const pInfill=part('infill',.75,21);
+pInfill.g.add(slab(1.2,8.5,M({map:photo('tex/infill.jpg',sandTex,1/10,1/10),bumpMap:photo('tex/infill.jpg',sandTex,1/10,1/10),bumpScale:.04,roughness:1}),M({map:photo('tex/infill.jpg',sandTex,1/10,1/10),roughness:1}),.5,.15));
+const granules=[];
+{
+  function heap(x,z){return .18*Math.sin(x*.45)*Math.cos(z*.38)+.1*Math.sin(x*1.3+z*.9);}
+  const sand=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(.16,1),M({roughness:.85}),4200);
+  const rub=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(.2,0),M({roughness:.7,flatShading:true}),1600);
+  [sand,rub].forEach(im=>{im.receiveShadow=true;granules.push(im);});
+  const o=new THREE.Object3D(),c=new THREE.Color(),SP=['#e2d1a8','#cdb685','#b59d6a','#efe3c4','#a68f5e'],RP=['#1f1d1b','#2a2825','#151413'];
+  for(let i=0;i<sand.count;i++){const x=(R()-.5)*(S-1),z=(R()-.5)*(S-1);o.position.set(x,9.72+heap(x,z)+R()*.15,z);o.rotation.set(R()*6,R()*6,R()*6);const s=.75+R()*.7;o.scale.set(s,s*(.8+R()*.3),s);o.updateMatrix();sand.setMatrixAt(i,o.matrix);sand.setColorAt(i,c.set(SP[(R()*SP.length)|0]).convertSRGBToLinear());}
+  for(let i=0;i<rub.count;i++){const x=(R()-.5)*(S-1),z=(R()-.5)*(S-1);o.position.set(x,9.75+heap(x,z)+R()*.2,z);o.rotation.set(R()*6,R()*6,R()*6);const s=.7+R()*.8;o.scale.set(s,s*(.6+R()*.4),s*(.8+R()*.4));o.updateMatrix();rub.setMatrixAt(i,o.matrix);rub.setColorAt(i,c.set(RP[(R()*RP.length)|0]).convertSRGBToLinear());}
+  pInfill.g.add(sand);pInfill.g.add(rub);
+}
+// 1 blades + thatch, rooted on the backing top (y 8.5)
+const windU={value:0};
+// a blade: tapered, folded down the middle (V section), curving as it rises
+function bladeGeo(width,curl){
+  const segs=7,pos=[],idx=[];
+  for(let j=0;j<=segs;j++){const y=j/segs,hw=width*.5*(1-Math.pow(y,1.6)*.92),z=y*y*curl,fold=hw*.35;
+    pos.push(-hw,y,z+fold, 0,y,z, hw,y,z+fold);}
+  for(let j=0;j<segs;j++){const a=j*3;idx.push(a,a+1,a+3, a+1,a+4,a+3, a+1,a+2,a+4, a+2,a+5,a+4);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;
+}
+function windify(m,ao){m.onBeforeCompile=s=>{s.uniforms.uTime=windU;
+  s.vertexShader='uniform float uTime;\nvarying float vH;\n'+s.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vH=position.y;\n vec4 ip=instanceMatrix[3];\n float k=position.y*position.y;\n transformed.x+=sin(uTime*1.7+ip.x*.35+ip.z*.21)*.32*k;\n transformed.z+=cos(uTime*1.25+ip.z*.3+ip.x*.1)*.22*k;');
+  s.fragmentShader='varying float vH;\n'+s.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n diffuseColor.rgb*=mix('+ao+',1.0,smoothstep(0.0,0.75,vH));\n diffuseColor.rgb+=vec3(.05,.07,.02)*smoothstep(.7,1.,vH);');};}
+const pBlades=part('blades',1,30);
+const blades=[];
+function field(n,width,curl,hMin,hMax,pal,lean,ao){
+  const mat=M({roughness:.55,metalness:0,side:THREE.DoubleSide});windify(mat,ao);
+  const im=new THREE.InstancedMesh(bladeGeo(width,curl),mat,n), o=new THREE.Object3D(), c=new THREE.Color();
+  for(let i=0;i<n;i++){
+    o.position.set((R()-.5)*(S-.5),8.5,(R()-.5)*(S-.5));
+    o.rotation.set((R()-.5)*lean,R()*Math.PI*2,(R()-.5)*lean);
+    o.scale.set(1,hMin+R()*(hMax-hMin),1);o.updateMatrix();im.setMatrixAt(i,o.matrix);
+    c.set(pal[(R()*pal.length)|0]);c.offsetHSL(0,(R()-.5)*.05,(R()-.5)*.07);im.setColorAt(i,c.convertSRGBToLinear());
+  }
+  pBlades.g.add(im);blades.push(im);return im;
+}
+field(6000,.36,.9,3.6,4.9,['#4FAE45','#5CB94C','#3F9038','#6FA83F','#7FB04C','#56A43F','#468F3A'],.35,'.32');
+field(3200,.24,1.6,1.2,2.0,['#8a7a45','#a08e55','#6e6a3a','#9c8a4c','#7a7f3f'],.95,'.45');
+
+/* --- labels with leader lines --- */
+const LBL=[
+  {p:pBlades,n:'Blades + thatch',t:'Multi-tone face yarn with a short curled thatch for spring-back.',a:[S/2,12,S/2],side:1},
+  {p:pInfill,n:'Infill',t:'Sand and rubber granules brushed between the blades for weight and support.',a:[S/2,9.6,S/2],side:0},
+  {p:pBacking,n:'Perforated backing',t:'Blades are stitched into it in rows. Holes let water drain through.',a:[S/2,8.2,S/2],side:1},
+  {p:pBarrier,n:'Weed barrier',t:'Fabric that stops weeds pushing up from the soil.',a:[S/2,7.7,S/2],side:0},
+  {p:pBase,n:'Compacted base',t:'Crushed rock, graded and compacted so it stays level and drains.',a:[S/2,3.8,S/2],side:1}
+];
+const labRoot=$('#labels'), svg=$('#leaders'), NS='http://www.w3.org/2000/svg';
+LBL.forEach((L,i)=>{L.el=document.createElement('div');L.el.className='lab';L.el.innerHTML='<b><i>'+String(i+1).padStart(2,'0')+'</i>'+L.n+'</b><span>'+L.t+'</span>';labRoot.appendChild(L.el);L.line=document.createElementNS(NS,'line');L.dot=document.createElementNS(NS,'circle');L.dot.setAttribute('r','3');svg.appendChild(L.line);svg.appendChild(L.dot);L.v=new THREE.Vector3();});
+
+/* --- rain --- */
+const DROPS=900;
+const rainGeo=new THREE.BufferGeometry();
+const rp=new Float32Array(DROPS*3), rv=new Float32Array(DROPS);
+for(let i=0;i<DROPS;i++){rp[i*3+1]=-999;}
+rainGeo.setAttribute('position',new THREE.BufferAttribute(rp,3));
+const rain=new THREE.Points(rainGeo,new THREE.PointsMaterial({color:0xa9dbff,size:.42,transparent:true,opacity:.9,depthWrite:false}));
+rain.frustumCulled=false;scene.add(rain);
+let rainAmt=0;
+function spawn(i){rp[i*3]=(R()-.5)*(S-1);rp[i*3+1]=30+R()*40;rp[i*3+2]=(R()-.5)*(S-1);rv[i]=55+R()*25;}
+function stepRain(dt){
+  for(let i=0;i<DROPS;i++){
+    let y=rp[i*3+1];
+    if(y<-900){if(R()<rainAmt*dt*2.2)spawn(i);continue;}
+    const sp=y>13?rv[i]:y>8.5?rv[i]*.35:y>7.5?rv[i]*.25:rv[i]*.18;
+    y-=sp*dt;
+    if(y<-3){y=-999;}
+    rp[i*3+1]=y;
+  }
+  rainGeo.attributes.position.needsUpdate=true;
+}
+
+/* --- camera script: one cue per story beat --- */
+const CUES={
+  hero:  {az:38, pol:62,fit:68,ty:6.5,ex:0,ts:1,  sx:.27, sy:-.16},
+  close: {az:16, pol:80,fit:14,ty:12, ex:0,ts:.16,sx:.22, sy:.2},
+  apart: {az:30, pol:73,fit:80,ty:17, ex:1,ts:1,  sx:.13, sy:.18},
+  around:{az:210,pol:64,fit:82,ty:17, ex:1,ts:1,  sx:.13, sy:.18},
+  rain:  {az:398,pol:62,fit:62,ty:7,  ex:0,ts:1,  sx:-.16,sy:.2},
+  cta:   {az:425,pol:52,fit:84,ty:6,  ex:0,ts:1,  sx:.2,  sy:.24}
+};
+const KEYS=['az','pol','fit','ty','ex','ts','sx','sy'];
+const beats=[...document.querySelectorAll('[data-cue]')];
+let marks=[];
+function layoutMarks(){const max=Math.max(1,document.documentElement.scrollHeight-innerHeight);marks=beats.map(b=>({at:clamp((b.offsetTop+b.offsetHeight/2-innerHeight/2)/max,0,1),c:CUES[b.dataset.cue],id:b.dataset.cue}));}
+function target(p){
+  if(p<=marks[0].at)return Object.assign({id:marks[0].id},marks[0].c);
+  for(let i=0;i<marks.length-1;i++){const a=marks[i],b=marks[i+1];if(p<=b.at){let t=(p-a.at)/Math.max(1e-4,b.at-a.at);t=smooth(clamp((t-.12)/.76,0,1));const o={id:t<.5?a.id:b.id};KEYS.forEach(k=>o[k]=lerp(a.c[k],b.c[k],t));return o;}}
+  const l=marks[marks.length-1];return Object.assign({id:l.id},l.c);
+}
+const cur=Object.assign({},CUES.hero);
+
+/* --- sizing --- */
+let W=1,H=1,mobile=false;
+function resize(){W=innerWidth;H=innerHeight;mobile=W<760;renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix();layoutMarks();}
+addEventListener('resize',resize);resize();
+
+/* --- input --- */
+let mx=0,my=0;
+addEventListener('pointermove',e=>{if(e.pointerType!=='mouse')return;mx=e.clientX/W*2-1;my=e.clientY/H*2-1;},{passive:true});
+
+let bp=false;
+const bpBtn=$('#blueprint');
+bpBtn.addEventListener('click',()=>{bp=!bp;bpBtn.setAttribute('aria-pressed',String(bp));mats.forEach(m=>{m.wireframe=bp;});scene.background.copy(bp?BG_BP:BG);scene.fog.color.copy(bp?BG_BP:BG);});
+
+/* hold-to-rain + synthesized rain sound (Web Audio, no files) */
+let ac=null,rainGain=null,holding=false,holdP=0;
+function initAudio(){if(ac)return;try{ac=new(window.AudioContext||window.webkitAudioContext)();const len=ac.sampleRate*2,buf=ac.createBuffer(1,len,ac.sampleRate),d=buf.getChannelData(0);let last=0;for(let i=0;i<len;i++){const w=Math.random()*2-1;last=(last+.02*w)/1.02;d[i]=w*.5+last*3;}const src=ac.createBufferSource();src.buffer=buf;src.loop=true;const hp=ac.createBiquadFilter();hp.type='highpass';hp.frequency.value=500;const bq=ac.createBiquadFilter();bq.type='bandpass';bq.frequency.value=1500;bq.Q.value=.5;rainGain=ac.createGain();rainGain.gain.value=0;src.connect(hp);hp.connect(bq);bq.connect(rainGain);rainGain.connect(ac.destination);src.start();}catch(e){ac=null;}}
+const hold=$('#hold'),ring=$('#ring'),note=$('#holdNote');
+function down(e){holding=true;initAudio();if(ac&&ac.state==='suspended')ac.resume();if(e&&e.pointerId!=null){try{hold.setPointerCapture(e.pointerId);}catch(_){}}}
+function up(){holding=false;}
+hold.addEventListener('pointerdown',e=>{e.preventDefault();down(e);});
+['pointerup','pointercancel','lostpointercapture'].forEach(t=>hold.addEventListener(t,up));
+hold.addEventListener('keydown',e=>{if((e.key===' '||e.key==='Enter')&&!e.repeat){e.preventDefault();down();}});
+hold.addEventListener('keyup',e=>{if(e.key===' '||e.key==='Enter')up();});
+hold.addEventListener('contextmenu',e=>e.preventDefault());
+
+/* --- labels placement: project, then stack in two clean columns --- */
+function placeLabels(alpha){
+  labRoot.style.opacity=alpha.toFixed(3);
+  if(alpha<.01)return;
+  const colW=mobile?152:216, m=mobile?12:28;
+  const top=mobile?70:90, bottom=mobile?H*.5:H-60;
+  const cols=[[],[]];
+  LBL.forEach(L=>{const side=mobile?L.side:1;L.v.set(side?L.a[0]:L.a[0],L.a[1],L.a[2]);L.p.g.localToWorld(L.v);L.v.project(camera);L.sx=(L.v.x*.5+.5)*W;L.sy=(-L.v.y*.5+.5)*H;cols[side].push(L);});
+  cols.forEach((col,side)=>{
+    col.sort((a,b)=>a.sy-b.sy);
+    const gap=mobile?34:(col.length>3?62:70);let y=top;
+    col.forEach(L=>{L.ly=Math.max(y,clamp(L.sy-14,top,bottom));y=L.ly+gap;});
+    const over=y-gap-bottom;if(over>0)col.forEach(L=>L.ly-=over);
+    col.forEach(L=>{
+      const lx=side?W-colW-m:m;
+      L.el.style.transform='translate('+lx+'px,'+L.ly+'px)';
+      const ex=side?lx-8:lx+colW+8, ey=L.ly+9;
+      L.line.setAttribute('x1',ex);L.line.setAttribute('y1',ey);L.line.setAttribute('x2',L.sx);L.line.setAttribute('y2',L.sy);
+      L.dot.setAttribute('cx',L.sx);L.dot.setAttribute('cy',L.sy);
+    });
+  });
+}
+
+/* --- one clock drives everything --- */
+const tgtPos=new THREE.Vector3(), look=new THREE.Vector3();
+const FOV=camera.fov*Math.PI/180;
+let last=performance.now(), simT=0, frames=0, fpsT=0, lowSteps=0, first=true;
+function frame(now){
+  const dt=Math.min(.05,(now-last)/1000);last=now;
+  const maxS=Math.max(1,document.documentElement.scrollHeight-innerHeight);
+  const t=target(clamp(scrollY/maxS,0,1));
+  const k=1-Math.exp(-dt*(reduced?12:4.2));
+  KEYS.forEach(key=>cur[key]+=(t[key]-cur[key])*k);
+
+  simT+=dt*(reduced?0:cur.ts);
+  windU.value=simT;
+
+  // exploded view: top parts leave first, come back last
+  parts.forEach(p=>{const delay=(1-p.order)*.42;const e=ease((cur.ex-delay)/.58);p.g.position.y=p.lift*e;});
+
+  // frame by size: fit N cm on screen, works on phone and monitor
+  const half=Math.tan(FOV/2);
+  const d=Math.max(cur.fit/2/half,cur.fit/2/(half*camera.aspect))*1.05;
+  const az=(cur.az+(t.id==='hero'&&!reduced?Math.sin(simT*.25)*6:0)+mx*5)*Math.PI/180;
+  const pol=clamp(cur.pol+my*3,10,88)*Math.PI/180;
+  look.set(0,cur.ty,0);
+  camera.position.set(Math.sin(pol)*Math.sin(az)*d,cur.ty+Math.cos(pol)*d,Math.sin(pol)*Math.cos(az)*d);
+  camera.lookAt(look);
+  if(mobile)camera.setViewOffset(W,H,0,cur.sy*H,W,H);else camera.setViewOffset(W,H,-cur.sx*W,0,W,H);
+
+  // cursor moves the sun
+  sun.position.set(30+mx*25,55-my*10,25);
+
+  // rain
+  const inRain=t.id==='rain'||t.id==='cta';
+  holdP=clamp(holdP+(holding&&inRain?dt/1.1:-dt/.6),0,1);
+  rainAmt=holding&&inRain?Math.max(.25,holdP)*260:0;
+  stepRain(dt);
+  ring.style.strokeDashoffset=(100.5*(1-holdP)).toFixed(1);
+  if(rainGain&&ac)rainGain.gain.setTargetAtTime(holding&&inRain?.22*Math.max(.3,holdP):0,ac.currentTime,.15);
+  const msg=!inRain?'Scroll here to use it.':holding?(holdP>=1?'Draining through the backing and base.':'Raining…'):'Press and hold, or hold Space while the button is focused.';
+  if(note.textContent!==msg)note.textContent=msg;
+
+  renderer.render(scene,camera);
+  placeLabels(clamp((cur.ex-.7)/.25,0,1));
+
+  if(first){first=false;loader.classList.add('done');}
+  // adaptive quality: drop resolution, then thin the field, if fps < 40
+  frames++;fpsT+=dt;
+  if(fpsT>2){const fps=frames/fpsT;frames=0;fpsT=0;
+    if(fps<40&&lowSteps<3){lowSteps++;
+      if(lowSteps===1&&dpr>1){dpr=1;renderer.setPixelRatio(dpr);resize();}
+      else if(lowSteps===2){sun.castShadow=false;}
+      else{blades.concat(granules).forEach(b=>b.count=Math.floor(b.count*.6));}
+    }}
+  requestAnimationFrame(frame);
+}
+try{renderer.compile(scene,camera);}catch(e){}
+addEventListener('load',layoutMarks);
+requestAnimationFrame(frame);
+})();
+</script>
+
+</body>
+</html>
