@@ -477,6 +477,7 @@ function frame(now){
   look.set(0,cur.ty,0);
   camera.position.set(Math.sin(pol)*Math.sin(az)*d,cur.ty+Math.cos(pol)*d,Math.sin(pol)*Math.cos(az)*d);
   camera.lookAt(look);
+  scene.fog.near=d+60;scene.fog.far=d+260; // fog follows the camera so narrow screens (camera further back) stay lit
   if(mobile)camera.setViewOffset(W,H,0,cur.sy*H,W,H);else camera.setViewOffset(W,H,-cur.sx*W,0,W,H);
 
   // cursor moves the sun
